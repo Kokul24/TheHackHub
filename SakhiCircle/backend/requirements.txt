@@ -1,0 +1,25 @@
+# Sakhi-Score Backend Dependencies
+# Credit Scoring API for Self-Help Groups
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+
+# Database
+pymongo>=4.6.0
+
+# Machine Learning
+scikit-learn>=1.4.0
+numpy>=1.26.0
+pandas>=2.1.0
+
+# Explainable AI
+shap>=0.44.0
+
+# Visualization
+matplotlib>=3.8.0
+
+# HTTP Client (for testing)
+httpx>=0.25.0
+python-multipart>=0.0.6
