@@ -8,7 +8,8 @@ function FormInput({
   step, 
   unit, 
   description,
-  color = 'blue' 
+  color = 'blue',
+  disabled = false
 }) {
   const colorClasses = {
     blue: {
@@ -32,7 +33,7 @@ function FormInput({
   const percentage = ((value - min) / (max - min)) * 100;
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3 ${disabled ? 'opacity-50' : ''}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg bg-gradient-to-br ${colors.gradient} ${colors.glow} shadow-lg`}>
@@ -61,11 +62,12 @@ function FormInput({
         <input
           type="range"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(Number(e.target.value))}
           min={min}
           max={max}
           step={step}
-          className="relative w-full h-2 bg-transparent appearance-none cursor-pointer z-10"
+          disabled={disabled}
+          className={`relative w-full h-2 bg-transparent appearance-none z-10 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         />
       </div>
 
