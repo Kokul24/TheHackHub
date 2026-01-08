@@ -148,10 +148,10 @@ function App() {
       if (text) {
         setConversation(prev => [...prev, { speaker: 'user', text }]);
 
-        // send to converse endpoint
+        // send to converse endpoint; prefer detected language from STT when available
         const fd2 = new FormData();
         fd2.append('text', text);
-        fd2.append('lang', lang);
+        fd2.append('lang', detected || lang || 'auto');
         fd2.append('savings', formData.savings);
         fd2.append('attendance', formData.attendance);
         fd2.append('repayment', formData.repayment);
@@ -167,7 +167,6 @@ function App() {
           setPendingAction({ convo, reply });
           setConversation(prev => [...prev, { speaker: 'system', text: `Detected intent: ${reply} — please confirm.` }]);
           fetchAndPlay(`Detected intent: ${reply}. Please confirm.`);
-        }
         } else {
           // Handle navigation action
           if (convo.action === 'navigate') {

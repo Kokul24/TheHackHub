@@ -588,54 +588,54 @@ async def converse_endpoint(text: str = Form(...), lang: str = Form('en'),
     # Field keywords per language
     field_keywords = {
         'en': {
-            'savings': ['savings', 'monthly savings', 'monthly saving', 'save'],
-            'attendance': ['attendance', 'meeting attendance', 'presence'],
-            'repayment': ['repayment', 'repay', 'repayment rate', 'loan repayment']
+            'savings': ['savings', 'monthly savings', 'monthly saving', 'save', 'monthly contribution', 'per member'],
+            'attendance': ['attendance', 'meeting attendance', 'presence', 'attendance rate', 'meeting turnout'],
+            'repayment': ['repayment', 'repay', 'repayment rate', 'loan repayment', 'on-time repayment', 'emi']
         },
         'hi': {
-            'savings': ['बचत', 'बचत प्रति सदस्य', 'मासिक बचत'],
-            'attendance': ['उपस्थिति', 'हाजिरी', 'हाजिरी दर'],
-            'repayment': ['भुगतान', 'वापसी', 'ऋण भुगतान']
+            'savings': ['बचत', 'बचत प्रति सदस्य', 'मासिक बचत', 'मासिक योगदान', 'प्रति सदस्य'],
+            'attendance': ['उपस्थिति', 'हाजिरी', 'हाजिरी दर', 'बैठक उपस्थिति', 'उपस्थित प्रतिशत'],
+            'repayment': ['भुगतान', 'वापसी', 'ऋण भुगतान', 'समय पर भुगतान', 'कर्ज चुकौती']
         },
         'bn': {
-            'savings': ['সঞ্চয়', 'মাসিক সঞ্চয়'],
-            'attendance': ['উপস্থিতি'],
-            'repayment': ['প্রত্যর্পণ', 'প্রতিদান']
+            'savings': ['সঞ্চয়', 'মাসিক সঞ্চয়', 'প্রতি সদস্য'],
+            'attendance': ['উপস্থিতি', 'মিটিং উপস্থিতি', 'উপস্থিতির হার'],
+            'repayment': ['প্রত্যর্পণ', 'প্রতিদান', 'ঋণ পরিশোধ']
         },
         'ta': {
-            'savings': ['சேமிப்பு', 'மாத சேமிப்பு'],
-            'attendance': ['தற்போதைய', 'வருகை', 'உபையில்'],
-            'repayment': ['திருப்பு', 'கட்டணம்']
+            'savings': ['சேமிப்பு', 'மாத சேமிப்பு', 'ஒரு உறுப்பினருக்கு'],
+            'attendance': ['வருகை', 'ஒட்டுமொத்த வருகை', 'கூட்டத்தில் வருகை'],
+            'repayment': ['திருப்பி', 'கட்டணம்', 'கடன்செலுத்தல்']
         },
         'te': {
-            'savings': ['సేవింగ్స్', 'మాసిక సేవింగ్స్'],
-            'attendance': ['హాజరు', 'హాజరీ'],
-            'repayment': ['చెల్లింపు', 'తిరిగి చెల్లింపు']
+            'savings': ['సేవింగ్స్', 'మాసిక సేవింగ్స్', 'ప్రతి సభ్యుడు'],
+            'attendance': ['హాజరు', 'సభ హాజరు', 'హాజరీ రేటు'],
+            'repayment': ['చెల్లింపు', 'తిరిగి చెల్లింపు', 'ఋణ చెల్లింపు']
         },
         'kn': {
-            'savings': ['ಸಂಪಾದನೆ', 'ಮಾಸಿಕ ಉಳವು'],
-            'attendance': ['ಹಾಜರಿ', 'ಹಾಜರಿ ದರ'],
-            'repayment': ['திருப்பி']
+            'savings': ['ಉಳವೊ', 'ಸಂಚಯ', 'ಮಾಸಿಕ ಉಳವೆ', 'ಪ್ರತಿ ಸದಸ್ಯ'],
+            'attendance': ['ಹಾಜರಿ', 'ಸಭೆ ಹಾಜರಿ', 'ಹಾಜರಿ ದರ', 'ೂಪಸ್ಥಿತಿ'],
+            'repayment': ['ಮರುಪಾವತಿ', 'ಬಡ್ಡಿ ಪಾವತಿ', 'ಕಡ್ಡಿ']
         },
         'ml': {
-            'savings': ['സേമിപ്പ്', 'മാസിക്സേമിപ്പ്'],
-            'attendance': ['ഹാജര', 'ഉപസ്ഥിതി'],
-            'repayment': ['പരിശോധന']
+            'savings': ['ശേഖരം', 'മാസ്റ്റ്രി ശേഖരം', 'പ്രതി അംഗം'],
+            'attendance': ['ഹാജര', 'യോഗ ഹാജര', 'ഹാജര നിരക്ക്'],
+            'repayment': ['തിരിച്ചു അടുപ്പ്', 'കിട്ട്പാട്', 'പണമടയ്‌ക്കല്']
         },
         'mr': {
-            'savings': ['बचत', 'मासिक बचत'],
-            'attendance': ['हजेरी', 'उपस्थिती'],
-            'repayment': ['परतफेड', 'हप्ते']
+            'savings': ['बचत', 'मासिक बचत', 'प्रति सदस्य'],
+            'attendance': ['हजेरी', 'बैठकीची हजेरी', 'हजेरी दर'],
+            'repayment': ['परतफेड', 'कर्ज परतफेड', 'वेळेवर परतफेड']
         },
         'gu': {
-            'savings': ['બચત', 'માસિક બચત'],
-            'attendance': ['હાજરી', 'હાજરી દર'],
-            'repayment': ['ચુકવણી', 'વાપસી']
+            'savings': ['બચત', 'માસિક બચત', 'પ્રતિ સભ્ય'],
+            'attendance': ['હાજરી', 'બેઠક હાજરી', 'હાજરી દર'],
+            'repayment': ['ચુકવણી', 'રીપેમેન્ટ', 'સમીય પર ચૂકવણી']
         },
         'pa': {
-            'savings': ['ਬਚਤ', 'ਮਹੀਨਾਵਾਰ ਬਚਤ'],
-            'attendance': ['ਹਾਜ਼ਰੀ', 'ਹਾਜ਼ਰੀ ਦਰ'],
-            'repayment': ['ਵਾਪਸੀ', 'ਚੁਕਾਂ']
+            'savings': ['ਬਚਤ', 'ਮਹੀਨਾਵਾਰ ਬਚਤ', 'ਹਰ ਮੈਂਬਰ'],
+            'attendance': ['ਹਾਜ਼ਰੀ', 'ਮੀਟਿੰਗ ਹਾਜ਼ਰੀ', 'ਹਾਜ਼ਰੀ ਦਰ'],
+            'repayment': ['ਵਾਪਸੀ', 'ਕਰਜ਼ ਵਾਪਸੀ', 'ਸਮੇਂ ']
         }
     }
 
