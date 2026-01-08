@@ -3,6 +3,8 @@ Database Connection Module for Facial Recognition System
 Handles MongoDB connection and face data operations.
 """
 
+from datetime import datetime
+
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import os
@@ -52,7 +54,8 @@ class FaceDatabase:
             "name": name,
             "encoding": encoding,
             "metadata": metadata or {},
-            "created_at": self.client.server_info()["localTime"]  # Use server time
+            "created_at": datetime.now()
+  # Use server time
         }
 
         result = self.collection.insert_one(document)

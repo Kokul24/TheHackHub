@@ -80,16 +80,20 @@ class FaceRecognizer:
 
         face_names = []
         for face_encoding in face_encodings:
-            # Compare with known faces
-            matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding, tolerance=self.tolerance)
-            name = "Unknown"
+            # If there are no known faces in DB, default to Unknown
+            if len(self.known_face_encodings) == 0:
+                name = "Unknown"
+            else:
+                # Compare with known faces
+                matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding, tolerance=self.tolerance)
+                name = "Unknown"
 
-            # Find the best match
-            face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
-            best_match_index = np.argmin(face_distances)
-
-            if matches[best_match_index]:
-                name = self.known_face_names[best_match_index]
+                # Find the best match safely
+                face_distances = face_recognition.face_distance(self.known_face_encodings, face_encoding)
+                if len(face_distances) > 0:
+                    best_match_index = np.argmin(face_distances)
+                    if best_match_index < len(matches) and matches[best_match_index]:
+                        name = self.known_face_names[best_match_index]
 
             face_names.append(name)
 
