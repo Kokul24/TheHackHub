@@ -55,6 +55,7 @@ COLLECTION_NAME = "shg_logs"
 REQUESTS_COLLECTION = "loan_requests"
 USERS_COLLECTION = "users"
 TOKENS_COLLECTION = "auth_tokens"
+SCORE_LOGS_COLLECTION = "score_logs"  # New: Historical score tracking
 
 mongo_client: Optional[MongoClient] = None
 db = None
@@ -62,10 +63,11 @@ collection = None
 requests_collection = None
 users_collection = None
 tokens_collection = None
+score_logs_collection = None  # New: Historical score logs
 
 def connect_to_mongodb():
     """Initialize MongoDB connection."""
-    global mongo_client, db, collection, requests_collection, users_collection, tokens_collection
+    global mongo_client, db, collection, requests_collection, users_collection, tokens_collection, score_logs_collection
     try:
         mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
         # Test connection
@@ -75,6 +77,7 @@ def connect_to_mongodb():
         requests_collection = db[REQUESTS_COLLECTION]
         users_collection = db[USERS_COLLECTION]
         tokens_collection = db[TOKENS_COLLECTION]
+        score_logs_collection = db[SCORE_LOGS_COLLECTION]  # New: Score logs
         print("✅ Connected to MongoDB successfully!")
         
         # Create default admin if not exists
@@ -1050,12 +1053,120 @@ async def logout_user(authorization: str = Header(None)):
 # ============================================================
 
 SHG_GROUPS_COLLECTION = "shg_groups"
+SCORE_LOGS_COLLECTION_NAME = "score_logs"
 
 def get_shg_groups_collection():
     """Get or create SHG groups collection."""
     if db is None:
         return None
     return db[SHG_GROUPS_COLLECTION]
+
+def get_score_logs_collection():
+    """Get or create score logs collection for historical tracking."""
+    if db is None:
+        return None
+    return db[SCORE_LOGS_COLLECTION_NAME]
+
+def get_month_label(dt: datetime) -> str:
+    """Convert datetime to month label like 'January 2026'."""
+    return dt.strftime("%B %Y")
+
+@app.post("/score/log")
+async def log_score_history(
+    data: dict,
+    current_user: dict = Depends(require_role(["admin"]))
+):
+    """
+    Admin (SHG Rep): Log a new score calculation to history.
+    Appends to history instead of overwriting.
+    """
+    score_logs = get_score_logs_collection()
+    if score_logs is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    try:
+        shg_name = current_user.get("shg_name")
+        if not shg_name:
+            raise HTTPException(status_code=400, detail="User does not have an SHG name assigned")
+        
+        now = datetime.utcnow()
+        
+        score_log = {
+            "group_id": shg_name,
+            "shg_name": shg_name,
+            "timestamp": now.isoformat(),
+            "month_label": get_month_label(now),
+            "inputs": {
+                "savings": data.get("savings", 0),
+                "attendance": data.get("attendance", 0),
+                "repayment": data.get("repayment", 0)
+            },
+            "calculated_score": data.get("score", 0),
+            "risk_status": data.get("risk", "Unknown"),
+            "logged_by": current_user["username"]
+        }
+        
+        score_logs.insert_one(score_log)
+        
+        return {
+            "success": True,
+            "message": "Score logged to history successfully",
+            "month_label": get_month_label(now)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to log score: {str(e)}")
+
+@app.get("/score/history/{shg_name}")
+async def get_score_history(
+    shg_name: str,
+    limit: int = 6,
+    current_user: dict = Depends(require_role(["admin", "manager"]))
+):
+    """
+    Get historical score data for an SHG group.
+    Returns last N entries (default 6 for 6-month view).
+    """
+    score_logs = get_score_logs_collection()
+    if score_logs is None:
+        raise HTTPException(status_code=503, detail="Database not connected")
+    
+    try:
+        print(f"DEBUG: Fetching score history for SHG: {shg_name}, limit: {limit}")
+        
+        # Get last N score logs for this group, sorted by timestamp descending
+        logs = list(score_logs.find(
+            {"shg_name": shg_name}
+        ).sort("timestamp", -1).limit(limit))
+        
+        print(f"DEBUG: Found {len(logs)} score log entries")
+        
+        # Convert ObjectId to string and format for response
+        history = []
+        for log in logs:
+            entry = {
+                "month_label": log.get("month_label", "Unknown"),
+                "timestamp": log.get("timestamp", ""),
+                "savings": log.get("inputs", {}).get("savings", 0),
+                "attendance": log.get("inputs", {}).get("attendance", 0),
+                "repayment": log.get("inputs", {}).get("repayment", 0),
+                "score": log.get("calculated_score", 0),
+                "risk": log.get("risk_status", "Unknown")
+            }
+            print(f"DEBUG: Entry - {entry}")
+            history.append(entry)
+        
+        # Reverse to show oldest first (chronological order)
+        history.reverse()
+        
+        return {
+            "shg_name": shg_name,
+            "history": history,
+            "count": len(history)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch history: {str(e)}")
 
 @app.get("/shg/group_data")
 async def get_group_data(

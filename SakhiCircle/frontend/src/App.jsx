@@ -530,6 +530,7 @@ function AdminPanel({ user, onLogout }) {
     setError(null);
 
     try {
+      // Save current group data
       await axios.post(`${API_URL}/shg/update_group_data`, {
         savings: groupData.savings,
         attendance: groupData.attendance,
@@ -540,7 +541,18 @@ function AdminPanel({ user, onLogout }) {
         headers: getAuthHeaders()
       });
 
-      setSuccess('Group financial data updated successfully! Members can now apply for loans with this score.');
+      // Log to score history (append, don't replace)
+      await axios.post(`${API_URL}/score/log`, {
+        savings: groupData.savings,
+        attendance: groupData.attendance,
+        repayment: groupData.repayment,
+        score: result.score,
+        risk: result.risk
+      }, {
+        headers: getAuthHeaders()
+      });
+
+      setSuccess('Score saved and logged to history! Members can now apply for loans. Managers will see your financial trend.');
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to save group data');
     } finally {
@@ -772,10 +784,38 @@ function ManagerInbox({ user, onLogout }) {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [updating, setUpdating] = useState(false);
+  const [scoreHistory, setScoreHistory] = useState([]);  // New: Historical scores
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  // Fetch score history when a request is selected
+  useEffect(() => {
+    if (selectedRequest?.shg_name) {
+      fetchScoreHistory(selectedRequest.shg_name);
+    }
+  }, [selectedRequest]);
+
+  const fetchScoreHistory = async (shgName) => {
+    setLoadingHistory(true);
+    try {
+      console.log('Fetching score history for:', shgName);
+      const response = await axios.get(`${API_URL}/score/history/${encodeURIComponent(shgName)}?limit=6`, {
+        headers: getAuthHeaders()
+      });
+      console.log('Score history response:', response.data);
+      const history = response.data.history || [];
+      console.log('Score history entries:', history.length, history);
+      setScoreHistory(history);
+    } catch (err) {
+      console.error('Failed to fetch score history:', err);
+      setScoreHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -855,27 +895,82 @@ function ManagerInbox({ user, onLogout }) {
 
     // Credit Score
     doc.setFontSize(12);
-    doc.text('Credit Score Analysis', 20, 65);
+    doc.text('Current Credit Score Analysis', 20, 65);
     doc.setFontSize(10);
     doc.text(`Score: ${req.score}/100`, 20, 72);
     doc.text(`Risk Level: ${req.risk}`, 20, 78);
 
     // Metrics
-    doc.text('Financial Metrics', 20, 90);
+    doc.text('Current Financial Metrics', 20, 90);
     doc.text(`Savings per Member: Rs.${req.savings}`, 20, 97);
     doc.text(`Attendance Rate: ${req.attendance}%`, 20, 103);
     doc.text(`Repayment Rate: ${req.repayment}%`, 20, 109);
 
-    // Reviewed by
-    doc.text(`Reviewed by: ${user?.full_name || 'Bank Manager'}`, 20, 120);
+    // 6-Month Performance History Table
+    let yPos = 125;
+    doc.setFontSize(12);
+    doc.setTextColor(37, 99, 235);
+    doc.text('6-Month Performance History', 20, yPos);
+    yPos += 8;
 
-    // SHAP Image
+    if (scoreHistory.length > 0) {
+      // Table Header
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Month', 20, yPos);
+      doc.text('Savings', 55, yPos);
+      doc.text('Attendance', 85, yPos);
+      doc.text('Repayment', 120, yPos);
+      doc.text('Score', 155, yPos);
+      doc.text('Risk', 175, yPos);
+      
+      yPos += 2;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, yPos, 190, yPos);
+      yPos += 5;
+
+      // Table Data
+      doc.setTextColor(0, 0, 0);
+      scoreHistory.forEach((entry) => {
+        doc.text(entry.month_label || 'N/A', 20, yPos);
+        doc.text(`Rs.${entry.savings}`, 55, yPos);
+        doc.text(`${entry.attendance}%`, 85, yPos);
+        doc.text(`${entry.repayment}%`, 120, yPos);
+        doc.text(`${entry.score}`, 155, yPos);
+        doc.text(entry.risk?.includes('Low') ? 'Low' : 'High', 175, yPos);
+        yPos += 6;
+      });
+      
+      yPos += 5;
+    } else {
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text('No historical data available', 20, yPos);
+      yPos += 10;
+    }
+
+    // Reviewed by
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Reviewed by: ${user?.full_name || 'Bank Manager'}`, 20, yPos);
+    yPos += 15;
+
+    // SHAP Image (on new page if needed)
     if (req.explanation_image) {
-      doc.text('SHAP Explanation Chart', 20, 135);
+      if (yPos > 180) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFontSize(12);
+      doc.setTextColor(37, 99, 235);
+      doc.text('AI Explanation (SHAP Waterfall)', 20, yPos);
+      yPos += 5;
       try {
-        doc.addImage(req.explanation_image, 'PNG', 20, 140, 170, 100);
+        doc.addImage(req.explanation_image, 'PNG', 20, yPos, 170, 100);
       } catch (e) {
-        doc.text('(Chart image unavailable)', 20, 145);
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text('(Chart image unavailable)', 20, yPos + 10);
       }
     }
 
@@ -984,6 +1079,62 @@ function ManagerInbox({ user, onLogout }) {
                     <span>Reject</span>
                   </button>
                 </div>
+              </div>
+
+              {/* 6-Month Score History */}
+              <div className="glass rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-blue-400" />
+                    6-Month Performance History
+                  </h3>
+                  {loadingHistory && <Loader2 className="h-4 w-4 animate-spin text-blue-400" />}
+                </div>
+                
+                {scoreHistory.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700">
+                          <th className="text-left py-2 px-3 text-slate-400 font-semibold">Month</th>
+                          <th className="text-center py-2 px-3 text-slate-400 font-semibold">Savings</th>
+                          <th className="text-center py-2 px-3 text-slate-400 font-semibold">Attendance</th>
+                          <th className="text-center py-2 px-3 text-slate-400 font-semibold">Repayment</th>
+                          <th className="text-center py-2 px-3 text-slate-400 font-semibold">Score</th>
+                          <th className="text-center py-2 px-3 text-slate-400 font-semibold">Risk</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scoreHistory.map((entry, idx) => (
+                          <tr key={idx} className="border-b border-slate-800 hover:bg-slate-800/50">
+                            <td className="py-3 px-3 text-white font-medium">{entry.month_label}</td>
+                            <td className="py-3 px-3 text-center text-emerald-400">₹{entry.savings}</td>
+                            <td className="py-3 px-3 text-center text-blue-400">{entry.attendance}%</td>
+                            <td className="py-3 px-3 text-center text-purple-400">{entry.repayment}%</td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`font-bold ${entry.score >= 60 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {entry.score}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                entry.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {entry.risk}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Activity className="h-10 w-10 text-slate-600 mx-auto mb-2" />
+                    <p className="text-slate-400 text-sm">No historical data available yet</p>
+                    <p className="text-slate-500 text-xs">History builds as SHG Rep saves scores</p>
+                  </div>
+                )}
               </div>
             </div>
 
