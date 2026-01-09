@@ -28,7 +28,7 @@ import {
 import FormInput from './components/FormInput';
 import ScoreCard from './components/ScoreCard';
 
-const API_URL = (window.ENV && window.ENV.API_URL) ? window.ENV.API_URL : 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
   const [formData, setFormData] = useState({

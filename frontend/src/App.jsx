@@ -57,8 +57,8 @@ import {
   Cell
 } from 'recharts';
 
-// Dynamic API URL: use window.ENV.API_URL if set, else fallback to localhost
-const API_URL = (window.ENV && window.ENV.API_URL) ? window.ENV.API_URL : 'http://localhost:8000';
+// Use Vite environment variable for API URL
+const API_URL = import.meta.env.VITE_API_URL;
 
 // ==================== AUTH HELPER ====================
 const getAuthHeaders = () => {
